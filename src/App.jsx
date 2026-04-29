@@ -377,7 +377,7 @@ function App() {
               <OrbitControls makeDefault target={[0, 0, 0]} />
               
               <Suspense fallback={null}>
-                <HexapodModel url="/urdf/sophia.urdf" angles={angles} bodyPose={bodyPose} />
+                <HexapodModel url={`${import.meta.env.BASE_URL}urdf/sophia.urdf`} angles={angles} bodyPose={bodyPose} />
               </Suspense>
             </Canvas>
           </div>
