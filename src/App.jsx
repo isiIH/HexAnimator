@@ -11,23 +11,23 @@ import './index.css'
 
 function App() {
   const spider = useMemo(() => new Spider(), []);
-  
+
   const [angles, setAngles] = useState(spider.getJointAngles());
   const [bodyPose, setBodyPose] = useState({ x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0 });
   const [legsPos, setLegsPos] = useState(spider.getLegPositions());
   const homeLegs = useMemo(() => spider.home_positions, [spider]);
-  
+
   const [selectedLeg, setSelectedLeg] = useState(0);
-  
+
   const [keyframes, setKeyframes] = useState([]);
   const [selectedKfIdx, setSelectedKfIdx] = useState(-1);
-  
+
   const [playing, setPlaying] = useState(false);
   const [playTime, setPlayTime] = useState(0);
   const [playMode, setPlayMode] = useState('once');
   const [speed, setSpeed] = useState(1);
   const [playDirection, setPlayDirection] = useState(1);
-  
+
   const lastTickRef = useRef(null);
   const reqRef = useRef(null);
   const angleOverridesRef = useRef({});
@@ -38,7 +38,7 @@ function App() {
   useEffect(() => {
     if (!playing) {
       const newAngles = spider.applyPose(bodyPose, legsPos);
-      
+
       // Apply manual angle overrides to prevent IK/FK jitter
       for (const [legIdx, overrideAngles] of Object.entries(angleOverridesRef.current)) {
         const idx = parseInt(legIdx, 10);
@@ -46,7 +46,7 @@ function App() {
         newAngles[idx * 3 + 1] = overrideAngles[1];
         newAngles[idx * 3 + 2] = overrideAngles[2];
       }
-      
+
       setAngles(newAngles);
     }
   }, [bodyPose, legsPos, playing, spider]);
@@ -121,10 +121,10 @@ function App() {
     if (selectedKfIdx >= 0 && !playing) {
       setKeyframes(prev => {
         const next = [...prev];
-        next[selectedKfIdx] = { 
-          ...next[selectedKfIdx], 
-          body: newBody || { ...bodyPose }, 
-          legs: newLegs ? newLegs.map(l => [...l]) : legsPos.map(l => [...l]) 
+        next[selectedKfIdx] = {
+          ...next[selectedKfIdx],
+          body: newBody || { ...bodyPose },
+          legs: newLegs ? newLegs.map(l => [...l]) : legsPos.map(l => [...l])
         };
         return next;
       });
@@ -188,10 +188,10 @@ function App() {
       angles[selectedLeg * 3 + 2]
     ];
     currentAnglesRad[angleIdx] = radVal;
-    
+
     // Store the manual angle override so IK doesn't overwrite it immediately
     angleOverridesRef.current[selectedLeg] = [...currentAnglesRad];
-    
+
     // Convert back to cartesian leg position
     const newPos = spider.calcLegPosFromAngles(selectedLeg, currentAnglesRad);
     setLegsPos(prev => {
@@ -319,6 +319,23 @@ function App() {
     a.click();
   };
 
+  const loadAttackAnimation = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.BASE_URL}animations/attack.json`);
+      if (!response.ok) throw new Error("File not found");
+      const data = await response.json();
+      if (data.keyframes) {
+        setKeyframes(data.keyframes);
+        setSelectedKfIdx(-1);
+        setPlaying(true);
+        setPlayTime(0);
+      }
+    } catch (err) {
+      console.error("Failed to load attack animation", err);
+      alert("Could not load animations/attack.json. Please ensure the file exists in the public folder.");
+    }
+  };
+
   const handleImportFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -344,17 +361,17 @@ function App() {
 
   return (
     <div className="app-container">
-      <TopMenu 
+      <TopMenu
         playing={playing} onPlayPause={handlePlayPause} onStop={handleStop}
         playMode={playMode} setPlayMode={setPlayMode}
         speed={speed} setSpeed={setSpeed}
         onExport={handleExport}
         onImportClick={() => document.getElementById('file-import').click()}
       />
-      <input type="file" id="file-import" accept=".json" style={{display: 'none'}} onChange={handleImportFile} />
+      <input type="file" id="file-import" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
 
       <div className="main-layout">
-        <Sidebar 
+        <Sidebar
           bodyPose={bodyPose} handleBodyChange={handleBodyChange} handleHomePose={handleHomePose}
           legsPos={legsPos} handleLegChange={handleLegChange} handleLegReset={handleLegReset}
           angles={angles} handleLegAngleChange={handleLegAngleChange}
@@ -365,29 +382,33 @@ function App() {
           onKfPropChange={handleKfPropChange}
           onReorderKf={handleReorder}
         />
-        
+
         <div className="panel-center">
           <div className="canvas-container">
             <Canvas camera={{ position: [-0.3, 0.2, -0.3], fov: 50 }}>
               <color attach="background" args={['#0a0a0f']} />
               <ambientLight intensity={0.6} />
               <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
-              
+
               <Grid position={[0, -0.0627, 0]} infiniteGrid fadeDistance={2} sectionColor="#333" cellColor="#111" />
               <axesHelper position={[0, -0.0627, 0]} args={[0.5]} />
               <OrbitControls makeDefault target={[0, 0, 0]} />
-              
+
               <Suspense fallback={null}>
                 <HexapodModel url={`${import.meta.env.BASE_URL}urdf/sophia.urdf`} angles={angles} bodyPose={bodyPose} />
               </Suspense>
             </Canvas>
+            
+            <button className="attack-btn" onClick={loadAttackAnimation}>
+              Attack
+            </button>
           </div>
 
-          <Timeline 
-            keyframes={keyframes} 
-            totalDuration={duration} 
+          <Timeline
+            keyframes={keyframes}
+            totalDuration={duration}
             playTime={playTime}
-            selectedKfIdx={selectedKfIdx} 
+            selectedKfIdx={selectedKfIdx}
             onSelectKf={handleSelectKf}
             onAddKf={handleAddKf}
             onDeleteAll={handleClearAll}

@@ -439,11 +439,54 @@ textarea {
 
 .canvas-container {
   flex: 1;
-  width: 100%;
   position: relative;
-  border-radius: var(--radius-lg);
+  background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0f 100%);
   overflow: hidden;
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+.attack-btn {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--accent-main);
+  color: white;
+  border: none;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 20px var(--accent-glow), inset 0 0 10px rgba(255,255,255,0.2);
+  z-index: 100;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.attack-btn:hover {
+  transform: scale(1.1) rotate(5deg);
+  background: #8b5cf6;
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.attack-btn:active {
+  transform: scale(0.9);
+}
+
+@media (max-width: 768px) {
+  .attack-btn {
+    width: 8dvh;
+    height: 8dvh;
+    right: 15px;
+    bottom: 15px;
+    font-size: 10px;
+  }
 }
 
 /* ==================== Keyframe Editor ==================== */
@@ -827,25 +870,29 @@ textarea {
     height: 100dvh;
   }
 
-  .main-layout { 
+  .main-layout {
     display: flex;
-    flex-direction: column; 
-    padding: 0; /* Remove floating appearance */
+    flex-direction: column;
+    padding: 0;
+    /* Remove floating appearance */
     gap: 0;
-    height: calc(100dvh - 60px); 
+    height: calc(100dvh - 60px);
     overflow: hidden;
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .panel-left { 
-    order: 2; /* Sidebar at the bottom */
-    width: 100%; 
-    min-width: unset; 
+  .panel-left {
+    order: 2;
+    /* Sidebar at the bottom */
+    width: 100%;
+    min-width: unset;
     max-height: none;
     flex: 1;
-    min-height: 0; /* Important: allow shrinking to fit gap */
+    min-height: 0;
+    /* Important: allow shrinking to fit gap */
     overflow-y: auto;
-    background: #0a0a0f; /* Integrated background */
+    background: #0a0a0f;
+    /* Integrated background */
     border: none;
     border-top: 1px solid var(--glass-border);
     border-radius: 0;
@@ -857,7 +904,8 @@ textarea {
     order: 1;
     display: flex;
     flex-direction: column;
-    flex: none; /* Workspace takes priority */
+    flex: none;
+    /* Workspace takes priority */
     gap: 2px;
     z-index: 10;
   }
