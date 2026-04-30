@@ -12,7 +12,6 @@ export default function Sidebar({
 }) {
   const [legMode, setLegMode] = useState('cartesian'); // 'cartesian' | 'angles'
   const [activeTab, setActiveTab] = useState('body'); // 'body', 'leg', 'kf'
-  const [isMinimized, setIsMinimized] = useState(false);
   const [openSections, setOpenSections] = useState({ body: true, leg: true, kf: true });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -125,45 +124,33 @@ export default function Sidebar({
   }, [selectedKfIdx, keyframes, activeTab]);
 
   return (
-    <div className={`panel-left glass-panel ${isMinimized ? 'minimized' : ''} ${activeTab === 'kf' ? 'kf-compact' : ''}`}>
+    <div className={`panel-left glass-panel} ${activeTab === 'kf' ? 'kf-compact' : ''}`}>
 
       {/* Mobile Tab Selector */}
       {isMobile && (
         <div className="sidebar-tabs">
           <button
             className={`tab-btn ${activeTab === 'body' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('body'); setIsMinimized(false); }}
+            onClick={() => setActiveTab('body')}
           >
             Body
           </button>
           <button
             className={`tab-btn ${activeTab === 'leg' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('leg'); setIsMinimized(false); }}
+            onClick={() => setActiveTab('leg')}
           >
             Legs
           </button>
           <button
             className={`tab-btn ${activeTab === 'kf' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('kf'); setIsMinimized(false); }}
+            onClick={() => setActiveTab('kf')}
           >
             Keyframe
-          </button>
-          <button
-            className="tab-btn"
-            style={{ flex: '0 0 44px', fontSize: 20, borderLeft: '1px solid var(--glass-border)', borderRadius: 0 }}
-            onClick={() => {
-              setIsMinimized(!isMinimized);
-              isMinimized ? setActiveTab('body') : setActiveTab('');
-            }}
-            title={isMinimized ? "Show Controls" : "Hide Controls"}
-          >
-            {isMinimized ? '+' : '−'}
           </button>
         </div>
       )}
 
-      {!isMinimized && (
-        <>
+      <>
           <div className={`panel-section ${activeTab !== 'body' ? 'mobile-hidden' : ''}`}>
             <div
               className="panel-header"
@@ -387,9 +374,7 @@ export default function Sidebar({
               </div>
             )}
           </div>
-        </>
-      )}
-
+      </>
     </div>
   );
 }
