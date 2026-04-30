@@ -60,7 +60,7 @@ export default function Timeline({
       <div className="timeline-toolbar">
         <div className="timeline-toolbar-left">
           <button className="btn" onClick={onAddKf}>+ Keyframe</button>
-          <button className="btn btn-danger" onClick={onDeleteAll}>🗑 Delete All</button>
+          <button className="btn btn-danger" onClick={onDeleteAll}>🗑 Clear</button>
         </div>
         <div className="timeline-toolbar-right">
           <span className="timeline-info">

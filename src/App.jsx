@@ -267,7 +267,7 @@ function App() {
   };
 
   const handleClearAll = () => {
-    if (window.confirm("Delete all keyframes?")) {
+    if (window.confirm("Are you sure to clear all keyframes?")) {
       setKeyframes([]);
       setSelectedKfIdx(-1);
     }
@@ -363,11 +363,12 @@ function App() {
           selectedKfIdx={selectedKfIdx} keyframes={keyframes}
           onDeleteKf={handleDeleteKf}
           onKfPropChange={handleKfPropChange}
+          onReorderKf={handleReorder}
         />
         
         <div className="panel-center">
           <div className="canvas-container">
-            <Canvas camera={{ position: [-0.6, 0.5, -0.6], fov: 50 }}>
+            <Canvas camera={{ position: [-0.3, 0.2, -0.3], fov: 50 }}>
               <color attach="background" args={['#0a0a0f']} />
               <ambientLight intensity={0.6} />
               <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />

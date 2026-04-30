@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function Sidebar({ 
+export default function Sidebar({
   bodyPose, handleBodyChange, handleHomePose,
   legsPos, handleLegChange, handleLegReset,
   angles, handleLegAngleChange,
@@ -8,9 +8,24 @@ export default function Sidebar({
   selectedLeg, setSelectedLeg,
   selectedKfIdx,
   keyframes,
-  onDeleteKf, onKfPropChange
+  onDeleteKf, onKfPropChange, onReorderKf
 }) {
   const [legMode, setLegMode] = useState('cartesian'); // 'cartesian' | 'angles'
+  const [activeTab, setActiveTab] = useState('body'); // 'body', 'leg', 'kf'
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [openSections, setOpenSections] = useState({ body: true, leg: true, kf: true });
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const toggleSection = (s) => {
+    if (isMobile) return;
+    setOpenSections(prev => ({ ...prev, [s]: !prev[s] }));
+  };
 
   const BODY_PARAMS = [
     { key: 'x', label: 'X', min: -0.05, max: 0.05, step: 0.001 },
@@ -34,6 +49,13 @@ export default function Sidebar({
   ];
 
   const legNames = ['RF', 'RM', 'RB', 'LF', 'LM', 'LB'];
+
+  const handleMove = (dir) => {
+    const newIdx = selectedKfIdx + dir;
+    if (newIdx >= 0 && newIdx < keyframes.length) {
+      onReorderKf(selectedKfIdx, newIdx);
+    }
+  };
 
   // Preview Canvas Ref
   const canvasRef = useRef(null);
@@ -60,14 +82,14 @@ export default function Sidebar({
 
       const easing = kf.easing || 'ease-in-out';
       const arcHeight = kf.arc_height || 0;
-      
-      const easeFn = { 
-        linear: t => t, 
-        'ease-in': t => t ** 3, 
-        'ease-out': t => 1 - (1 - t) ** 3, 
-        'ease-in-out': t => t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2 
+
+      const easeFn = {
+        linear: t => t,
+        'ease-in': t => t ** 3,
+        'ease-out': t => 1 - (1 - t) ** 3,
+        'ease-in-out': t => t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2
       }[easing] || (t => t);
-      
+
       const steps = 60;
 
       // Easing curve (dashed, dim)
@@ -89,7 +111,7 @@ export default function Sidebar({
       ctx.strokeStyle = '#0ea5e9';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      const maxArc = 0.12; 
+      const maxArc = 0.12;
       for (let i = 0; i <= steps; i++) {
         const t = i / steps;
         const et = easeFn(t);
@@ -100,191 +122,273 @@ export default function Sidebar({
       }
       ctx.stroke();
     }
-  }, [selectedKfIdx, keyframes]);
+  }, [selectedKfIdx, keyframes, activeTab]);
 
   return (
-    <div className="panel-left glass-panel">
-      
-      <div className="panel-section">
-        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Body Pose</span>
-          <button className="btn-home" onClick={handleHomePose} title="Go to Standing Pose (Home)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    <div className={`panel-left glass-panel ${isMinimized ? 'minimized' : ''} ${activeTab === 'kf' ? 'kf-compact' : ''}`}>
+
+      {/* Mobile Tab Selector */}
+      {isMobile && (
+        <div className="sidebar-tabs">
+          <button
+            className={`tab-btn ${activeTab === 'body' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('body'); setIsMinimized(false); }}
+          >
+            Body
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'leg' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('leg'); setIsMinimized(false); }}
+          >
+            Legs
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'kf' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('kf'); setIsMinimized(false); }}
+          >
+            Keyframe
+          </button>
+          <button
+            className="tab-btn"
+            style={{ flex: '0 0 44px', fontSize: 20, borderLeft: '1px solid var(--glass-border)', borderRadius: 0 }}
+            onClick={() => {
+              setIsMinimized(!isMinimized);
+              isMinimized ? setActiveTab('body') : setActiveTab('');
+            }}
+            title={isMinimized ? "Show Controls" : "Hide Controls"}
+          >
+            {isMinimized ? '+' : '−'}
           </button>
         </div>
-        <div className="panel-content">
-          {BODY_PARAMS.map(p => (
-            <div className="slider-row" key={p.key}>
-              <span className="slider-label">{p.label}</span>
-              <div className="slider-wrapper">
-                <input 
-                  type="range" className="slider-input" 
-                  min={p.min} max={p.max} step={p.step} 
-                  value={bodyPose[p.key]} 
-                  onChange={(e) => handleBodyChange(p.key, e.target.value)} 
-                />
-              </div>
-              <input 
-                type="text" className="slider-value" 
-                value={bodyPose[p.key].toFixed(3)} 
-                onChange={(e) => handleBodyChange(p.key, e.target.value)}
-              />
-              <button className="slider-reset" onClick={() => handleBodyChange(p.key, 0)}>↺</button>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
-      <div className="panel-section">
-        <div className="panel-header">Leg Control</div>
-        <div className="panel-content">
-          <div className="leg-selector">
-            {legNames.map((name, i) => (
-              <button 
-                key={i} 
-                className={`leg-btn ${selectedLeg === i ? 'active' : ''}`}
-                onClick={() => setSelectedLeg(i)}
-              >
-                {name}
+      {!isMinimized && (
+        <>
+          <div className={`panel-section ${activeTab !== 'body' ? 'mobile-hidden' : ''}`}>
+            <div
+              className="panel-header"
+              onClick={() => toggleSection('body')}
+              style={{ cursor: isMobile ? 'default' : 'pointer', userSelect: 'none' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {!isMobile && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: openSections.body ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                )}
+                <span>Body Pose</span>
+              </div>
+              <button className="btn-home" onClick={(e) => { e.stopPropagation(); handleHomePose(); }} title="Go to Standing Pose (Home)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
               </button>
-            ))}
+            </div>
+            {(openSections.body || isMobile) && (
+              <div className="panel-content">
+                {BODY_PARAMS.map(p => (
+                  <div className="slider-row" key={p.key}>
+                    <span className="slider-label">{p.label}</span>
+                    <div className="slider-wrapper">
+                      <input
+                        type="range" className="slider-input"
+                        min={p.min} max={p.max} step={p.step}
+                        value={bodyPose[p.key]}
+                        onChange={(e) => handleBodyChange(p.key, e.target.value)}
+                      />
+                    </div>
+                    <input
+                      type="text" className="slider-value"
+                      value={bodyPose[p.key].toFixed(3)}
+                      onChange={(e) => handleBodyChange(p.key, e.target.value)}
+                    />
+                    <button className="slider-reset" onClick={() => handleBodyChange(p.key, 0)}>↺</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <button 
-              className={`leg-btn ${legMode === 'cartesian' ? 'active' : ''}`} 
-              style={{ flex: 1, padding: '4px' }}
-              onClick={() => setLegMode('cartesian')}
+          <div className={`panel-section ${activeTab !== 'leg' ? 'mobile-hidden' : ''}`}>
+            <div
+              className="panel-header"
+              onClick={() => toggleSection('leg')}
+              style={{ cursor: isMobile ? 'default' : 'pointer', userSelect: 'none' }}
             >
-              Cartesian
-            </button>
-            <button 
-              className={`leg-btn ${legMode === 'angles' ? 'active' : ''}`} 
-              style={{ flex: 1, padding: '4px' }}
-              onClick={() => setLegMode('angles')}
-            >
-              Angles
-            </button>
-          </div>
-
-          {legMode === 'cartesian' && LEG_CART_PARAMS.map(p => (
-            <div className="slider-row" key={p.key}>
-              <span className="slider-label">{p.label}</span>
-              <div className="slider-wrapper">
-                <input 
-                  type="range" className="slider-input" 
-                  min={p.min} max={p.max} step={p.step} 
-                  value={legsPos[selectedLeg]?.[p.key] || 0} 
-                  onChange={(e) => handleLegChange(p.key, e.target.value)} 
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {!isMobile && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: openSections.leg ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                )}
+                <span>Leg Control</span>
               </div>
-              <input 
-                type="text" className="slider-value" 
-                value={(legsPos[selectedLeg]?.[p.key] || 0).toFixed(4)} 
-                onChange={(e) => handleLegChange(p.key, e.target.value)}
-              />
-              <button className="slider-reset" onClick={() => handleLegReset(p.key)}>↺</button>
             </div>
-          ))}
-
-          {legMode === 'angles' && LEG_ANGLE_PARAMS.map(p => {
-            const currentAngleRad = angles ? angles[selectedLeg * 3 + p.key] : 0;
-            const currentAngleDeg = (currentAngleRad * 180 / Math.PI) || 0;
-            return (
-              <div className="slider-row" key={p.key}>
-                <span className="slider-label">{p.label}</span>
-                <div className="slider-wrapper">
-                  <input 
-                    type="range" className="slider-input" 
-                    min={p.min} max={p.max} step={p.step} 
-                    value={currentAngleDeg} 
-                    onChange={(e) => handleLegAngleChange(p.key, e.target.value)} 
-                  />
-                </div>
-                <input 
-                  type="text" className="slider-value" 
-                  value={currentAngleDeg.toFixed(1)} 
-                  onChange={(e) => handleLegAngleChange(p.key, e.target.value)}
-                />
-                <button className="slider-reset" onClick={() => handleLegAngleChange(p.key, 0)}>↺</button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="panel-section" style={{ borderBottom: 'none' }}>
-        <div className="panel-header">Keyframe Properties</div>
-        <div className="panel-content">
-          
-          {selectedKfIdx < 0 ? (
-            <div className="kf-empty-state" style={{ padding: '20px 10px', fontSize: 11 }}>
-              No keyframe selected.<br/>
-              Click a marker on the timeline.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="kf-badge-id">KF #{selectedKfIdx}</span>
-                <button className="btn-icon" style={{ color: 'var(--danger)', width: 28, height: 28 }} onClick={() => onDeleteKf(selectedKfIdx)} title="Delete Keyframe">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-              </div>
-              
-              <div className="kf-form-group">
-                <label className="kf-detail-label">Duration (s)</label>
-                <input 
-                  type="number" className="duration-input" 
-                  min="0.05" step="0.05"
-                  value={keyframes[selectedKfIdx]?.duration ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    onKfPropChange(selectedKfIdx, 'duration', val === '' ? 0.0 : parseFloat(val));
-                  }}
-                />
-              </div>
-
-              <div className="kf-form-group">
-                <label className="kf-detail-label">Easing</label>
-                <div className="easing-buttons">
-                  {['linear', 'ease-in', 'ease-out', 'ease-in-out'].map(ease => (
-                    <button 
-                      key={ease}
-                      className={`easing-btn ${keyframes[selectedKfIdx]?.easing === ease ? 'active' : ''}`}
-                      onClick={() => onKfPropChange(selectedKfIdx, 'easing', ease)}
+            {(openSections.leg || isMobile) && (
+              <div className="panel-content">
+                <div className="leg-selector">
+                  {legNames.map((name, i) => (
+                    <button
+                      key={i}
+                      className={`leg-btn ${selectedLeg === i ? 'active' : ''}`}
+                      onClick={() => setSelectedLeg(i)}
                     >
-                      {ease === 'linear' ? 'Linear' : ease === 'ease-in-out' ? 'In-Out' : ease.replace('ease-', 'Ease ')}
+                      {name}
                     </button>
                   ))}
                 </div>
-              </div>
 
-              <div className="kf-form-group">
-                <label className="kf-detail-label">Leg Arc Height (m)</label>
-                <div className="kf-control-row">
-                  <div className="slider-wrapper" style={{flex: 1}}>
-                    <input 
-                      type="range" className="slider-input" style={{width: '100%'}}
-                      min="0" max="0.12" step="0.005" 
-                      value={keyframes[selectedKfIdx]?.arc_height || 0}
-                      onChange={(e) => onKfPropChange(selectedKfIdx, 'arc_height', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <span className="arc-val-badge">
-                    {(keyframes[selectedKfIdx]?.arc_height || 0).toFixed(3)}
-                  </span>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                  <button
+                    className={`leg-btn ${legMode === 'cartesian' ? 'active' : ''}`}
+                    style={{ flex: 1, padding: '4px' }}
+                    onClick={() => setLegMode('cartesian')}
+                  >
+                    Cartesian
+                  </button>
+                  <button
+                    className={`leg-btn ${legMode === 'angles' ? 'active' : ''}`}
+                    style={{ flex: 1, padding: '4px' }}
+                    onClick={() => setLegMode('angles')}
+                  >
+                    Angles
+                  </button>
                 </div>
-              </div>
 
-              <div className="kf-form-group">
-                <label className="kf-detail-label">Curve Preview</label>
-                <canvas ref={canvasRef} className="curve-canvas" width="280" height="80" style={{ width: '100%', borderRadius: 4 }}></canvas>
+                {legMode === 'cartesian' && LEG_CART_PARAMS.map(p => (
+                  <div className="slider-row" key={p.key}>
+                    <span className="slider-label">{p.label}</span>
+                    <div className="slider-wrapper">
+                      <input
+                        type="range" className="slider-input"
+                        min={p.min} max={p.max} step={p.step}
+                        value={legsPos[selectedLeg]?.[p.key] || 0}
+                        onChange={(e) => handleLegChange(p.key, e.target.value)}
+                      />
+                    </div>
+                    <input
+                      type="text" className="slider-value"
+                      value={(legsPos[selectedLeg]?.[p.key] || 0).toFixed(4)}
+                      onChange={(e) => handleLegChange(p.key, e.target.value)}
+                    />
+                    <button className="slider-reset" onClick={() => handleLegReset(p.key)}>↺</button>
+                  </div>
+                ))}
+
+                {legMode === 'angles' && LEG_ANGLE_PARAMS.map(p => {
+                  const currentAngleRad = angles ? angles[selectedLeg * 3 + p.key] : 0;
+                  const currentAngleDeg = (currentAngleRad * 180 / Math.PI) || 0;
+                  return (
+                    <div className="slider-row" key={p.key}>
+                      <span className="slider-label">{p.label}</span>
+                      <div className="slider-wrapper">
+                        <input
+                          type="range" className="slider-input"
+                          min={p.min} max={p.max} step={p.step}
+                          value={currentAngleDeg}
+                          onChange={(e) => handleLegAngleChange(p.key, e.target.value)}
+                        />
+                      </div>
+                      <input
+                        type="text" className="slider-value"
+                        value={currentAngleDeg.toFixed(1)}
+                        onChange={(e) => handleLegAngleChange(p.key, e.target.value)}
+                      />
+                      <button className="slider-reset" onClick={() => handleLegAngleChange(p.key, 0)}>↺</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className={`panel-section ${activeTab !== 'kf' ? 'mobile-hidden' : ''}`} style={{ borderBottom: 'none' }}>
+            <div
+              className="panel-header"
+              onClick={() => toggleSection('kf')}
+              style={{ cursor: isMobile ? 'default' : 'pointer', userSelect: 'none' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {!isMobile && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: openSections.kf ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                )}
+                <span>Keyframe Properties</span>
               </div>
             </div>
-          )}
+            {(openSections.kf || isMobile) && (
+              <div className="panel-content">
+                {selectedKfIdx < 0 ? (
+                  <div className="kf-empty-state" style={{ padding: '20px 10px', fontSize: 11 }}>
+                    No keyframe selected.<br />
+                    Click a marker on the timeline.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="kf-selector-container">
+                        <button className="kf-move-btn" onClick={(e) => { e.stopPropagation(); handleMove(-1); }} disabled={selectedKfIdx <= 0} title="Move Left">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <span className="kf-badge-id">KF #{selectedKfIdx}</span>
+                        <button className="kf-move-btn" onClick={(e) => { e.stopPropagation(); handleMove(1); }} disabled={selectedKfIdx >= keyframes.length - 1} title="Move Right">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                      </div>
+                      <button className="btn-icon" style={{ color: 'var(--danger)', width: 28, height: 28 }} onClick={(e) => { e.stopPropagation(); onDeleteKf(selectedKfIdx); }} title="Delete Keyframe">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                      </button>
+                    </div>
 
-        </div>
-      </div>
+                    <div className="kf-form-group">
+                      <label className="kf-detail-label">Duration (s)</label>
+                      <input
+                        type="number" className="duration-input"
+                        min="0.05" step="0.05"
+                        value={keyframes[selectedKfIdx]?.duration ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          onKfPropChange(selectedKfIdx, 'duration', val === '' ? 0.0 : parseFloat(val));
+                        }}
+                      />
+                    </div>
+
+                    <div className="kf-form-group">
+                      <label className="kf-detail-label">Easing</label>
+                      <div className="easing-buttons">
+                        {['linear', 'ease-in', 'ease-out', 'ease-in-out'].map(ease => (
+                          <button
+                            key={ease}
+                            className={`easing-btn ${keyframes[selectedKfIdx]?.easing === ease ? 'active' : ''}`}
+                            onClick={() => onKfPropChange(selectedKfIdx, 'easing', ease)}
+                          >
+                            {ease === 'linear' ? 'Linear' : ease === 'ease-in-out' ? 'In-Out' : ease.replace('ease-', 'Ease ')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="kf-form-group">
+                      <label className="kf-detail-label">Leg Arc Height (m)</label>
+                      <div className="kf-control-row">
+                        <div className="slider-wrapper" style={{ flex: 1 }}>
+                          <input
+                            type="range" className="slider-input" style={{ width: '100%' }}
+                            min="0" max="0.12" step="0.005"
+                            value={keyframes[selectedKfIdx]?.arc_height || 0}
+                            onChange={(e) => onKfPropChange(selectedKfIdx, 'arc_height', parseFloat(e.target.value))}
+                          />
+                        </div>
+                        <span className="arc-val-badge">
+                          {(keyframes[selectedKfIdx]?.arc_height || 0).toFixed(3)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="kf-form-group">
+                      <label className="kf-detail-label">Curve Preview</label>
+                      <canvas ref={canvasRef} className="curve-canvas" width="280" height="80" style={{ width: '100%', borderRadius: 4 }}></canvas>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
     </div>
   );
