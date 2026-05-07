@@ -8,35 +8,53 @@ import { Leg } from './Leg.js';
 const PREFIXES = ['rf_', 'rm_', 'rb_', 'lf_', 'lm_', 'lb_'];
 
 export class Spider {
-  constructor() {
+  constructor(config = null) {
     this.legs = [];
     this.T_sb = eye4();
 
-    // Dimensions from URDF (coxa=0.035, femur=0.045, tibia=0.09)
-    const dims = [0.035, 0.045, 0.09];
+    if (config) {
+      for (const legCfg of config) {
+        this.legs.push(new Leg(legCfg.dims, legCfg.origin));
+      }
+    } else {
+      // Fallback defaults (Sophia-like)
+      const dims = [0.035, 0.045, 0.09];
+      const chassis_radius = 0.06;
+      const yaws = [
+        Math.PI / 3,       // rf
+        0.0,               // rm
+        -Math.PI / 3,      // rb
+        2 * Math.PI / 3,   // lf
+        Math.PI,           // lm
+        4 * Math.PI / 3,   // lb
+      ];
 
-    // Chassis radius from prosoma_chassis.urdf.xacro
-    const chassis_radius = 0.06;
-
-    // Leg origins — same angles as sophia_hexapod.urdf.xacro
-    const yaws = [
-      Math.PI / 3,       // rf
-      0.0,               // rm
-      -Math.PI / 3,      // rb
-      2 * Math.PI / 3,   // lf
-      Math.PI,           // lm
-      4 * Math.PI / 3,   // lb
-    ];
-
-    for (const yaw of yaws) {
-      const x = chassis_radius * Math.cos(yaw);
-      const y = chassis_radius * Math.sin(yaw);
-      this.legs.push(new Leg(dims, [x, y, 0, 0, 0, yaw]));
+      for (const yaw of yaws) {
+        const x = chassis_radius * Math.cos(yaw);
+        const y = chassis_radius * Math.sin(yaw);
+        this.legs.push(new Leg(dims, [x, y, 0, 0, 0, yaw]));
+      }
     }
 
-    this.home_positions = Array.from({ length: 6 }, () => [0.085, 0, -0.0627]);
+    // Default home positions — could be derived but for now keeping defaults
+    // derived from the first leg dimensions if available
+    const dims = this.legs[0] ? [this.legs[0].hip_length, this.legs[0].femur_length, this.legs[0].tibia_length] : [0.035, 0.045, 0.09];
+    const reach = dims[0] + dims[1] * 0.7; // heuristic
+    const height = -dims[2] * 0.7; // heuristic
+    
+    // For Sophia: 0.035 + 0.045*0.7 = 0.0665, -0.09*0.7 = -0.063.
+    // Close enough to [0.085, 0, -0.0627].
+    // Let's stick to the Sophia values as default if it's Sophia, 
+    // or calculate if lengths are very different.
+    if (Math.abs(dims[2] - 0.09) < 0.001) {
+      this.home_positions = Array.from({ length: 6 }, () => [0.085, 0, -0.0627]);
+    } else {
+      this.home_positions = Array.from({ length: 6 }, () => [dims[0] + dims[1], 0, -dims[2]/1.4]);
+    }
+
     this.home();
   }
+
 
   updateBodyPos(x = 0, y = 0, z = 0, roll = 0, pitch = 0, yaw = 0) {
     this.T_sb = T(x, y, z, roll, pitch, yaw);

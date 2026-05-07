@@ -4,22 +4,18 @@ HexAnimator is a web-based simulation and animation tool designed for hexapod ro
 
 ## Key Features
 
-### Real-Time Kinematics Engine
-- Comprehensive Inverse Kinematics (IK) for all six legs, allowing for precise foot placement in 3D space.
-- Direct joint angle control for fine-tuning individual motor positions.
-- Body pose transformations including translation (X, Y, Z) and rotation (Roll, Pitch, Yaw) with automatic leg compensation.
+### Hexapod Kinematics Engine
+- **Dynamic URDF Parsing**: Automatically extracts joint configurations, link lengths, and mounting origins from any provided URDF file following a URDF standard convention for hexapod robots.
+- **Comprehensive Inverse Kinematics (IK)**: Real-time IK solver for all six legs, with integrated safety checks to prevent out-of-reach positions or physical joint limit violations.
+- **Direct Angle Control**: Purely angular-based backend to ensure universal compatibility across different robot models.
+- **Smart Body Transformations**: Body pose adjustments (X, Y, Z, Roll, Pitch, Yaw) with automatic IK compensation and mathematical singularity prevention.
 
-### Advanced Animation Editor
-- Timeline-based keyframe management with intuitive marker interaction.
+### Animation Editor
+- Timeline-based keyframe management with marker interaction.
 - Keyframe reordering system for flexible sequence modification.
 - Configurable interpolation easing functions (Linear, Ease-In, Ease-Out, Ease-In-Out).
 - Parabolic leg lift trajectory planning with adjustable arc height parameters.
 
-### User Interface and Experience
-- Professional glassmorphic design system optimized for high-density information display.
-- Fully responsive architecture tailored for desktop, tablet, and mobile (Android/iOS) viewports.
-- Integrated accordion-style control panels for efficient workspace management on desktop.
-- Specialized mobile interface with tabbed navigation and sticky controls for on-the-go editing.
 
 ### Data Management
 - Project persistence via JSON export and import.

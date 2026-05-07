@@ -2,15 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 
 export default function Sidebar({
   bodyPose, handleBodyChange, handleHomePose,
-  legsPos, handleLegChange, handleLegReset,
-  angles, handleLegAngleChange,
+  legsPos, handleLegChange, handleLegReset, handlePlantZ,
+  angles, handleLegAngleChange, homeAngles,
   homeLegs,
   selectedLeg, setSelectedLeg,
   selectedKfIdx,
   keyframes,
+  playing,
   onDeleteKf, onKfPropChange, onReorderKf
 }) {
-  const [legMode, setLegMode] = useState('cartesian'); // 'cartesian' | 'angles'
   const [activeTab, setActiveTab] = useState('body'); // 'body', 'leg', 'kf'
   const [openSections, setOpenSections] = useState({ body: true, leg: true, kf: true });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -178,14 +178,16 @@ export default function Sidebar({
                         min={p.min} max={p.max} step={p.step}
                         value={bodyPose[p.key]}
                         onChange={(e) => handleBodyChange(p.key, e.target.value)}
+                        disabled={playing}
                       />
                     </div>
                     <input
                       type="text" className="slider-value"
                       value={bodyPose[p.key].toFixed(3)}
                       onChange={(e) => handleBodyChange(p.key, e.target.value)}
+                      disabled={playing}
                     />
-                    <button className="slider-reset" onClick={() => handleBodyChange(p.key, 0)}>↺</button>
+                    <button className="slider-reset" onClick={() => handleBodyChange(p.key, 0)} disabled={playing}>↺</button>
                   </div>
                 ))}
               </div>
@@ -219,46 +221,11 @@ export default function Sidebar({
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                  <button
-                    className={`leg-btn ${legMode === 'cartesian' ? 'active' : ''}`}
-                    style={{ flex: 1, padding: '4px' }}
-                    onClick={() => setLegMode('cartesian')}
-                  >
-                    Cartesian
-                  </button>
-                  <button
-                    className={`leg-btn ${legMode === 'angles' ? 'active' : ''}`}
-                    style={{ flex: 1, padding: '4px' }}
-                    onClick={() => setLegMode('angles')}
-                  >
-                    Angles
-                  </button>
-                </div>
-
-                {legMode === 'cartesian' && LEG_CART_PARAMS.map(p => (
-                  <div className="slider-row" key={p.key}>
-                    <span className="slider-label">{p.label}</span>
-                    <div className="slider-wrapper">
-                      <input
-                        type="range" className="slider-input"
-                        min={p.min} max={p.max} step={p.step}
-                        value={legsPos[selectedLeg]?.[p.key] || 0}
-                        onChange={(e) => handleLegChange(p.key, e.target.value)}
-                      />
-                    </div>
-                    <input
-                      type="text" className="slider-value"
-                      value={(legsPos[selectedLeg]?.[p.key] || 0).toFixed(4)}
-                      onChange={(e) => handleLegChange(p.key, e.target.value)}
-                    />
-                    <button className="slider-reset" onClick={() => handleLegReset(p.key)}>↺</button>
-                  </div>
-                ))}
-
-                {legMode === 'angles' && LEG_ANGLE_PARAMS.map(p => {
+                {LEG_ANGLE_PARAMS.map(p => {
                   const currentAngleRad = angles ? angles[selectedLeg * 3 + p.key] : 0;
                   const currentAngleDeg = (currentAngleRad * 180 / Math.PI) || 0;
+                  const homeAngleRad = homeAngles ? homeAngles[selectedLeg * 3 + p.key] : 0;
+                  const homeAngleDeg = (homeAngleRad * 180 / Math.PI) || 0;
                   return (
                     <div className="slider-row" key={p.key}>
                       <span className="slider-label">{p.label}</span>
@@ -268,17 +235,38 @@ export default function Sidebar({
                           min={p.min} max={p.max} step={p.step}
                           value={currentAngleDeg}
                           onChange={(e) => handleLegAngleChange(p.key, e.target.value)}
+                          disabled={playing}
                         />
                       </div>
                       <input
                         type="text" className="slider-value"
                         value={currentAngleDeg.toFixed(1)}
                         onChange={(e) => handleLegAngleChange(p.key, e.target.value)}
+                        disabled={playing}
                       />
-                      <button className="slider-reset" onClick={() => handleLegAngleChange(p.key, 0)}>↺</button>
+                      <button className="slider-reset" onClick={() => handleLegAngleChange(p.key, homeAngleDeg)} title="Reset to Home" disabled={playing}>↺</button>
                     </div>
                   );
                 })}
+
+                <div style={{ marginTop: '16px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div className="leg-cart-info">
+                    {LEG_CART_PARAMS.map(p => (
+                      <div key={p.key} className="cart-info-box">
+                        <span className="cart-info-label">{p.label}</span>
+                        <div className="cart-info-value-row">
+                          <span className="cart-info-value">
+                            {(legsPos[selectedLeg]?.[p.key] || 0).toFixed(4)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button className="text-btn-plant" onClick={handlePlantZ} disabled={playing}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}><path d="M7 13l5 5 5-5M7 6l5 5 5-5"/></svg>
+                    Plant Leg on Ground (Z)
+                  </button>
+                </div>
               </div>
             )}
           </div>

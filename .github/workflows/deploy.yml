@@ -23,6 +23,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  VITE_URDF_NAME: ${{ vars.VITE_URDF_NAME || 'sophia_v2.urdf' }}
 
 jobs:
   # Single deploy job since we're just deploying; no build step needed for Vite (handled in job)

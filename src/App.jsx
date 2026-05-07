@@ -1,21 +1,23 @@
 import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid } from '@react-three/drei'
+import { OrbitControls, Grid, ContactShadows } from '@react-three/drei'
 import HexapodModel from './scene/HexapodModel'
 import Sidebar from './components/Sidebar'
 import Timeline from './components/Timeline'
 import TopMenu from './components/TopMenu'
 import { Spider } from './kinematics/Spider'
+import { parseUrdf } from './kinematics/UrdfParser'
 import { getFrameAtTime, totalDuration } from './kinematics/AnimationEngine'
 import './index.css'
 
 function App() {
-  const spider = useMemo(() => new Spider(), []);
+  const [spider, setSpider] = useState(() => new Spider());
 
   const [angles, setAngles] = useState(spider.getJointAngles());
   const [bodyPose, setBodyPose] = useState({ x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0 });
   const [legsPos, setLegsPos] = useState(spider.getLegPositions());
-  const homeLegs = useMemo(() => spider.home_positions, [spider]);
+  const [homeLegs, setHomeLegs] = useState(spider.home_positions);
+  const [homeAngles, setHomeAngles] = useState(spider.getJointAngles());
 
   const [selectedLeg, setSelectedLeg] = useState(0);
 
@@ -58,8 +60,12 @@ function App() {
     lastTickRef.current = time;
 
     setPlayTime((prev) => {
-      let nextTime = prev + (dt * speed * playDirection);
       let nextDir = playDirection;
+      if (playMode !== 'pingpong' && nextDir === -1) {
+        nextDir = 1;
+        setPlayDirection(1);
+      }
+      let nextTime = prev + (dt * speed * nextDir);
       let isPlaying = true;
 
       if (duration <= 0) {
@@ -124,7 +130,8 @@ function App() {
         next[selectedKfIdx] = {
           ...next[selectedKfIdx],
           body: newBody || { ...bodyPose },
-          legs: newLegs ? newLegs.map(l => [...l]) : legsPos.map(l => [...l])
+          legs: newLegs ? newLegs.map(l => [...l]) : legsPos.map(l => [...l]),
+          angles: [...angles]
         };
         return next;
       });
@@ -141,18 +148,44 @@ function App() {
     });
   };
 
+  useEffect(() => {
+    const urdfUrl = `${import.meta.env.BASE_URL}urdf/${import.meta.env.VITE_URDF_NAME || 'sophia_v1.urdf'}`;
+    fetch(urdfUrl)
+      .then(res => res.text())
+      .then(xml => {
+        const config = parseUrdf(xml);
+        const newSpider = new Spider(config);
+        setSpider(newSpider);
+        setHomeLegs(newSpider.home_positions);
+        setLegsPos(newSpider.home_positions.map(l => [...l]));
+        setAngles(newSpider.getJointAngles());
+        setHomeAngles(newSpider.getJointAngles());
+      })
+      .catch(err => console.error("Failed to load URDF for kinematics:", err));
+  }, []);
+
   const handleHomePose = () => {
     angleOverridesRef.current = {};
     const homeBody = { x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
     setBodyPose(homeBody);
     setLegsPos(homeLegs.map(l => [...l]));
+    
+    // Reset internal IK state to home angles to prevent inverted knee logic
+    if (spider && homeAngles && homeAngles.length === 18) {
+      for (let i = 0; i < 6; i++) {
+        spider.legs[i].ths = [homeAngles[i*3], homeAngles[i*3+1], homeAngles[i*3+2]];
+      }
+    }
+    
     autoSaveKf(homeBody, homeLegs);
   };
 
   useEffect(() => {
-    handleHomePose();
+    // This effect handles the initial home pose call. 
+    // We can't call it inside the first useEffect because homeLegs might not be updated yet.
+    if (homeLegs) handleHomePose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [homeLegs]);
 
   const handleLegChange = (axisIdx, val) => {
     delete angleOverridesRef.current[selectedLeg];
@@ -176,6 +209,49 @@ function App() {
       autoSaveKf(null, next);
       return next;
     });
+  };
+
+  const handlePlantZ = () => {
+    const targetZ = homeLegs[selectedLeg][2];
+    const nextLegsPos = legsPos.map(l => [...l]);
+    nextLegsPos[selectedLeg][2] = targetZ;
+
+    // Simulate IK by temporarily applying the pose
+    const testAngles = spider.applyPose(bodyPose, nextLegsPos);
+    
+    // Check if the resulting angles exceed Sidebar limits
+    const coxaDeg = testAngles[selectedLeg * 3] * 180 / Math.PI;
+    const femurDeg = testAngles[selectedLeg * 3 + 1] * 180 / Math.PI;
+    const tibiaDeg = testAngles[selectedLeg * 3 + 2] * 180 / Math.PI;
+
+    if (
+      coxaDeg < -60 || coxaDeg > 60 ||
+      femurDeg < -110 || femurDeg > 95 ||
+      tibiaDeg < -120 || tibiaDeg > 160
+    ) {
+      alert("The final position is beyond the reach of the robot's legs.");
+      spider.applyPose(bodyPose, legsPos); // Restore original
+      return;
+    }
+
+    // Verify if it actually reached the floor (wasn't mathematically clamped by reach)
+    const pos_cf = spider.legs[selectedLeg].getLocalPos(spider.T_sb);
+    const [x, y, z] = pos_cf;
+    const r = Math.sqrt(x * x + y * y);
+    const l_left = r - spider.legs[selectedLeg].hip_length;
+    const hf = Math.sqrt(l_left * l_left + z * z);
+    const max_reach = spider.legs[selectedLeg].femur_length + spider.legs[selectedLeg].tibia_length;
+    
+    if (hf > max_reach) {
+      alert("The leg cannot reach the ground from this body pose (due to excessive distance or height).");
+      spider.applyPose(bodyPose, legsPos); // Restore original
+      return;
+    }
+
+    // Safe to proceed
+    delete angleOverridesRef.current[selectedLeg];
+    setLegsPos(nextLegsPos);
+    autoSaveKf(null, nextLegsPos);
   };
 
   const handleLegAngleChange = (angleIdx, degVal) => {
@@ -221,7 +297,12 @@ function App() {
       angleOverridesRef.current = {};
       const kf = keyframes[0];
       setBodyPose({ ...kf.body });
-      setLegsPos(kf.legs.map(l => [...l]));
+      if (kf.legs) {
+        setLegsPos(kf.legs.map(l => [...l]));
+      }
+      if (kf.angles) {
+        setAngles([...kf.angles]);
+      }
     }
   };
 
@@ -238,6 +319,7 @@ function App() {
     const newKf = {
       body: { ...bodyPose },
       legs: legsPos.map(l => [...l]),
+      angles: [...angles],
       duration: 1.0,
       easing: 'ease-in-out',
       arc_height: 0
@@ -252,7 +334,8 @@ function App() {
         next[idx] = {
           ...next[idx],
           body: { ...bodyPose },
-          legs: legsPos.map(l => [...l])
+          legs: legsPos.map(l => [...l]),
+          angles: [...angles]
         };
         return next;
       });
@@ -284,12 +367,17 @@ function App() {
   };
 
   const handleSelectKf = (idx) => {
+    if (selectedKfIdx === idx) {
+      setSelectedKfIdx(-1);
+      return;
+    }
     setSelectedKfIdx(idx);
     const kf = keyframes[idx];
     if (kf) {
       angleOverridesRef.current = {};
       setBodyPose({ ...kf.body });
-      setLegsPos(kf.legs.map(l => [...l]));
+      if (kf.legs) setLegsPos(kf.legs.map(l => [...l]));
+      if (kf.angles) setAngles([...kf.angles]);
       // seek visually
       let acc = 0;
       for (let i = 1; i <= idx; i++) acc += keyframes[i].duration;
@@ -306,9 +394,15 @@ function App() {
   };
 
   const handleExport = () => {
+    // Convert keyframes to angle-only format for export
+    const exportKeyframes = keyframes.map(kf => {
+      const { legs, ...rest } = kf;
+      return rest;
+    });
+
     const data = {
       version: 1,
-      keyframes,
+      keyframes: exportKeyframes,
       metadata: { date: new Date().toISOString(), total_duration: duration }
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -325,7 +419,21 @@ function App() {
       if (!response.ok) throw new Error("File not found");
       const data = await response.json();
       if (data.keyframes) {
-        setKeyframes(data.keyframes);
+        // Reconstruct cartesian legs from angles
+        const kfs = data.keyframes.map(kf => {
+          if (kf.angles && !kf.legs) {
+            const reconstructedLegs = [];
+            const b = kf.body;
+            spider.updateBodyPos(b.x, b.y, b.z, b.roll, b.pitch, b.yaw);
+            for (let i = 0; i < 6; i++) {
+              const legAngles = [kf.angles[i * 3], kf.angles[i * 3 + 1], kf.angles[i * 3 + 2]];
+              reconstructedLegs.push(spider.calcLegPosFromAngles(i, legAngles));
+            }
+            return { ...kf, legs: reconstructedLegs };
+          }
+          return kf; // Fallback if old format
+        });
+        setKeyframes(kfs);
         setSelectedKfIdx(-1);
         setPlaying(true);
         setPlayTime(0);
@@ -343,11 +451,28 @@ function App() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
-        const kfs = data.keyframes || data;
+        let kfs = data.keyframes || data;
+        
+        // Reconstruct cartesian legs from angles
+        kfs = kfs.map(kf => {
+          if (kf.angles && !kf.legs) {
+            const reconstructedLegs = [];
+            const b = kf.body;
+            spider.updateBodyPos(b.x, b.y, b.z, b.roll, b.pitch, b.yaw);
+            for (let i = 0; i < 6; i++) {
+              const legAngles = [kf.angles[i * 3], kf.angles[i * 3 + 1], kf.angles[i * 3 + 2]];
+              reconstructedLegs.push(spider.calcLegPosFromAngles(i, legAngles));
+            }
+            return { ...kf, legs: reconstructedLegs };
+          }
+          return kf; // Fallback if old format
+        });
+
         setKeyframes(kfs);
         if (kfs.length > 0) {
           setBodyPose({ ...kfs[0].body });
-          setLegsPos(kfs[0].legs.map(l => [...l]));
+          if (kfs[0].legs) setLegsPos(kfs[0].legs.map(l => [...l]));
+          if (kfs[0].angles) setAngles([...kfs[0].angles]);
         }
         setSelectedKfIdx(-1);
         setPlayTime(0);
@@ -373,11 +498,12 @@ function App() {
       <div className="main-layout">
         <Sidebar
           bodyPose={bodyPose} handleBodyChange={handleBodyChange} handleHomePose={handleHomePose}
-          legsPos={legsPos} handleLegChange={handleLegChange} handleLegReset={handleLegReset}
-          angles={angles} handleLegAngleChange={handleLegAngleChange}
+          legsPos={legsPos} handleLegChange={handleLegChange} handleLegReset={handleLegReset} handlePlantZ={handlePlantZ}
+          angles={angles} handleLegAngleChange={handleLegAngleChange} homeAngles={homeAngles}
           homeLegs={homeLegs}
           selectedLeg={selectedLeg} setSelectedLeg={setSelectedLeg}
           selectedKfIdx={selectedKfIdx} keyframes={keyframes}
+          playing={playing}
           onDeleteKf={handleDeleteKf}
           onKfPropChange={handleKfPropChange}
           onReorderKf={handleReorder}
@@ -386,16 +512,31 @@ function App() {
         <div className="panel-center">
           <div className="canvas-container">
             <Canvas camera={{ position: [-0.3, 0.2, -0.3], fov: 50 }}>
-              <color attach="background" args={['#0a0a0f']} />
-              <ambientLight intensity={0.6} />
-              <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
+              <color attach="background" args={['#0d0d12']} />
+              <ambientLight intensity={0.7} />
+              <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
+              <pointLight position={[0, 2, 0]} intensity={0.5} />
 
-              <Grid position={[0, -0.0627, 0]} infiniteGrid fadeDistance={2} sectionColor="#333" cellColor="#111" />
+              <Grid position={[0, -0.0628, 0]} infiniteGrid fadeDistance={5} sectionColor="#ffffff" cellColor="#666" sectionThickness={1} opacity={0.2} />
+              
+              <ContactShadows 
+                position={[0, -0.0627, 0]} 
+                opacity={0.5} 
+                scale={1} 
+                blur={2} 
+                far={0.5} 
+                color="#000000" 
+              />
+
+              <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.063, 0]} receiveShadow>
+                <planeGeometry args={[30, 30]} />
+                <meshStandardMaterial color="#30303a" roughness={0.5} metalness={0.2} />
+              </mesh>
               <axesHelper position={[0, -0.0627, 0]} args={[0.5]} />
               <OrbitControls makeDefault target={[0, 0, 0]} />
 
               <Suspense fallback={null}>
-                <HexapodModel url={`${import.meta.env.BASE_URL}urdf/sophia.urdf`} angles={angles} bodyPose={bodyPose} />
+                <HexapodModel url={`${import.meta.env.BASE_URL}urdf/${import.meta.env.VITE_URDF_NAME || 'sophia_v1.urdf'}`} angles={angles} bodyPose={bodyPose} />
               </Suspense>
             </Canvas>
             

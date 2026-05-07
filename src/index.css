@@ -419,6 +419,80 @@ textarea {
   box-shadow: 0 4px 15px var(--accent-secondary-glow);
 }
 
+/* ==================== Cartesian Control ==================== */
+.leg-cart-info {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.cart-info-box {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid var(--glass-border);
+  min-width: 0;
+}
+
+.cart-info-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.cart-info-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.cart-info-value {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-btn-plant {
+  width: 100%;
+  margin-top: 12px;
+  background: rgba(124, 58, 237, 0.05);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  color: var(--accent-main);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.text-btn-plant:hover:not(:disabled) {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: var(--accent-main);
+  color: #a78bfa;
+}
+
+.text-btn-plant:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
 /* ==================== Center Panel ==================== */
 .container {
   display: flex;
@@ -440,7 +514,7 @@ textarea {
 .canvas-container {
   flex: 1;
   position: relative;
-  background: radial-gradient(circle at center, #1a1a2e 0%, #0a0a0f 100%);
+  background: radial-gradient(circle at center, #232332 0%, #151520 100%);
   overflow: hidden;
 }
 
@@ -460,13 +534,13 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 1px;
   cursor: pointer;
-  box-shadow: 0 0 20px var(--accent-glow), inset 0 0 10px rgba(255,255,255,0.2);
+  box-shadow: 0 0 20px var(--accent-glow), inset 0 0 10px rgba(255, 255, 255, 0.2);
   z-index: 100;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .attack-btn:hover {
