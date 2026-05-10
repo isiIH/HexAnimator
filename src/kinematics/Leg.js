@@ -1,5 +1,5 @@
 /**
- * Direct port of leg.py — Leg class with IK and FK.
+ * Leg class with IK and FK.
  */
 import { T, matMul, matInv } from './MathUtils.js';
 

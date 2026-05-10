@@ -1,63 +1,46 @@
-# HexAnimator: Hexapod Kinematics and Animation Suite
+# HexAnimator
 
-HexAnimator is a web-based simulation and animation tool designed for hexapod robots. It provides an intuitive interface for real-time inverse kinematics (IK) manipulation, keyframe-based animation sequencing, and trajectory planning.
+<p align="center">
+  <strong>A web-based Hexapod Kinematics & Animation Suite</strong><br>
+</p>
 
-## Key Features
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9e9bd6b5-cb07-445e-b56c-957196cd0d60" alt="HexAnimator Demo" width="300" />
+</p>
 
-### Hexapod Kinematics Engine
-- **Dynamic URDF Parsing**: Automatically extracts joint configurations, link lengths, and mounting origins from any provided URDF file following a URDF standard convention for hexapod robots.
-- **Comprehensive Inverse Kinematics (IK)**: Real-time IK solver for all six legs, with integrated safety checks to prevent out-of-reach positions or physical joint limit violations.
-- **Direct Angle Control**: Purely angular-based backend to ensure universal compatibility across different robot models.
-- **Smart Body Transformations**: Body pose adjustments (X, Y, Z, Roll, Pitch, Yaw) with automatic IK compensation and mathematical singularity prevention.
+<p align="center">
+   <a href="https://isiih.github.io/HexAnimator/"><strong>Try HexAnimator on your browser</strong></a>
+</p>
 
-### Animation Editor
-- Timeline-based keyframe management with marker interaction.
-- Keyframe reordering system for flexible sequence modification.
-- Configurable interpolation easing functions (Linear, Ease-In, Ease-Out, Ease-In-Out).
-- Parabolic leg lift trajectory planning with adjustable arc height parameters.
+---
 
+**HexAnimator** is an intuitive, web-based 3D simulation tool for hexapod robots. It allows you to manipulate real-time inverse kinematics (IK), sequence animations using keyframes, and plan leg trajectories directly from your browser.
 
-### Data Management
-- Project persistence via JSON export and import.
-- Built-in animation library support, including quick-access triggers for pre-defined sequences.
+## Features
 
-## Technical Stack
+*   **Precise Pose Control:** Manipulate the robot's full body transformation matrix (X, Y, Z, Roll, Pitch, Yaw) using intuitive sliders, and independently adjust each leg through direct joint angle controls.
+*   **Timeline Editing:** Generate keyframes to capture any robot pose. The timeline allows you to move or delete keyframes, adjust the timing between them, change interpolation curves for smoother transitions, and apply parabolic arc movements for realistic leg lifting.
+*   **Built-in Animations:** Quickly test the robot's capabilities by triggering pre-configured animation sequences, such as the included "attack" motion.
+*   **Import and Export Animations:** Seamlessly save your workflow or share sequences by exporting and importing your animation data as JSON files.
 
-- **Core Framework**: React 18
-- **3D Rendering Engine**: Three.js via React Three Fiber
-- **Robot Modeling**: URDF (Unified Robot Description Format) parsing and visualization
-- **Build System**: Vite
-- **Styling**: Vanilla CSS3 with advanced flexbox/grid architectures and dynamic viewport units
+*Note: You can run your animations via this [Ros2 package with Rviz](https://github.com/isiIH/sophia_hexapod/tree/main/hexapod_animation).*
 
-## Getting Started
+## Tech Stack & Architecture
 
-### Prerequisites
-- Node.js (version 16 or higher)
-- npm or yarn
+Built for high performance and clean structure using **React 18**, **Three.js** (via React Three Fiber), and **Vite**. 
 
-### Installation
-1. Clone the repository to your local machine.
-2. Navigate to the project directory.
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
+## Quick Start
 
-### Development
-To run the application in development mode with hot-reloading:
+Ensure you have **Node.js (v16+)** installed.
+
 ```bash
+# 1. Clone the repository and navigate into it
+git clone https://github.com/isiIH/HexAnimator.git
+cd HexAnimator
+
+# 2. Install dependencies
+npm install
+
+# 3. Start the development server
 npm run dev
 ```
-
-### Production Build
-To create a minimized production bundle:
-```bash
-npm run build
-```
-
-## Application Architecture
-
-The application is structured into three primary layers:
-1. **Simulation Layer**: Handles the mathematical models for kinematics and robot state.
-2. **Scene Layer**: Manages the 3D environment, lighting, and URDF model rendering.
-3. **Interface Layer**: Provides the control panels, timeline, and state management logic.

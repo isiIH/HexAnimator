@@ -1,6 +1,5 @@
 /**
- * Direct port of spider.py — Spider class managing 6 legs + body IK.
- * No ROS dependencies — pure math.
+ * Spider class managing 6 legs + body IK.
  */
 import { T, matMul, matInv, eye4, translation4 } from './MathUtils.js';
 import { Leg } from './Leg.js';

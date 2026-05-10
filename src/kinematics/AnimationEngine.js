@@ -1,6 +1,5 @@
 /**
- * Port of animation_player.py easing functions +
- * animation_editor.py interpolation logic.
+ * Animation Engine class managing keyframe interpolation.
  */
 
 // ==================== Easing Functions ====================

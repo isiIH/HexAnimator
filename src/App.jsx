@@ -419,19 +419,22 @@ function App() {
       if (!response.ok) throw new Error("File not found");
       const data = await response.json();
       if (data.keyframes) {
-        // Reconstruct cartesian legs from angles
+        // Reconstruct cartesian legs from angles or angles from legs for backwards compatibility
         const kfs = data.keyframes.map(kf => {
+          const b = kf.body || { x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
           if (kf.angles && !kf.legs) {
             const reconstructedLegs = [];
-            const b = kf.body;
             spider.updateBodyPos(b.x, b.y, b.z, b.roll, b.pitch, b.yaw);
             for (let i = 0; i < 6; i++) {
               const legAngles = [kf.angles[i * 3], kf.angles[i * 3 + 1], kf.angles[i * 3 + 2]];
               reconstructedLegs.push(spider.calcLegPosFromAngles(i, legAngles));
             }
-            return { ...kf, legs: reconstructedLegs };
+            return { ...kf, body: b, legs: reconstructedLegs };
+          } else if (kf.legs && !kf.angles) {
+            const computedAngles = spider.applyPose(b, kf.legs);
+            return { ...kf, body: b, angles: Array.from(computedAngles) };
           }
-          return kf; // Fallback if old format
+          return { ...kf, body: b };
         });
         setKeyframes(kfs);
         setSelectedKfIdx(-1);
@@ -453,19 +456,22 @@ function App() {
         const data = JSON.parse(ev.target.result);
         let kfs = data.keyframes || data;
         
-        // Reconstruct cartesian legs from angles
+        // Reconstruct cartesian legs from angles or angles from legs for backwards compatibility
         kfs = kfs.map(kf => {
+          const b = kf.body || { x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0 };
           if (kf.angles && !kf.legs) {
             const reconstructedLegs = [];
-            const b = kf.body;
             spider.updateBodyPos(b.x, b.y, b.z, b.roll, b.pitch, b.yaw);
             for (let i = 0; i < 6; i++) {
               const legAngles = [kf.angles[i * 3], kf.angles[i * 3 + 1], kf.angles[i * 3 + 2]];
               reconstructedLegs.push(spider.calcLegPosFromAngles(i, legAngles));
             }
-            return { ...kf, legs: reconstructedLegs };
+            return { ...kf, body: b, legs: reconstructedLegs };
+          } else if (kf.legs && !kf.angles) {
+            const computedAngles = spider.applyPose(b, kf.legs);
+            return { ...kf, body: b, angles: Array.from(computedAngles) };
           }
-          return kf; // Fallback if old format
+          return { ...kf, body: b };
         });
 
         setKeyframes(kfs);

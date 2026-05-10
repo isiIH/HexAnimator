@@ -1,7 +1,5 @@
 /**
- * Replacement for tf_matrix.py T() function.
- * Uses the EXACT same rotation matrix construction as the Python code:
- *   ZYX Euler convention (yaw * pitch * roll) with 4x4 homogeneous matrix.
+ * Rotation matrix using ZYX Euler convention (yaw * pitch * roll).
  */
 
 export function T(x = 0, y = 0, z = 0, roll = 0, pitch = 0, yaw = 0) {
